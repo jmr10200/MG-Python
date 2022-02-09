@@ -60,52 +60,56 @@ def crawling_stock_data(df, code, header, start_date, last_page):
 
 
 def print_graph(df, code, stock_name):
-    # 날짜 오름차순 정렬
-    graph_df = df.sort_values(by='날짜').astype({'날짜':'datetime64[D]'})
-    # 캔들 차트 객체 생성
-    candle = plotly.graph_objs.Candlestick(
-        x=graph_df['날짜'],
-        open=graph_df['시가'],
-        high=graph_df['고가'],
-        low=graph_df['저가'],
-        close=graph_df['종가'],
-        increasing_line_color='red',  # 상승봉
-        decreasing_line_color='blue'  # 하락봉
-    )
-    # 히스토그램 (거래량) 객체 생성
-    volume_h = plotly.graph_objs.Bar(x=graph_df['날짜'], y=graph_df['거래량'])
-    # figure 생성
-    figure = plotly.subplots.make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
-    # 첫번째 캔들 차트
-    figure.add_trace(candle, row=1, col=1)
-    # 두번째 거래량 차트
-    figure.add_trace(volume_h, row=2, col=1)
-    # TODO 차트 레이아웃 수정
-    figure.update_layout(
-        title=stock_name + ' (' + code + ') 차트',
-        title_x=0.5,
-        title_xanchor='center',
-        title_font_size=15,
-        yaxis1=dict(
-            title='주가',
-            tickformat=','
-        ),
-        xaxis2=dict(
-            title='날짜',
-            rangeslider_visible=True,
-            tickformat='%Y-%m-%d'
-        ),
-        yaxis2=dict(
-            title='거래량',
-            tickformat=',',
-        ),
-        xaxis1_rangeslider_visible=False
-    )
-    figure.show()
+    try:
+        # 날짜 오름차순 정렬
+        graph_df = df.sort_values(by='날짜')
+        # FIXME 캔들 차트 객체 생성
+        candle = plotly.graph_objs.Candlestick(
+            x=graph_df['날짜'],
+            open=graph_df['시가'],
+            high=graph_df['고가'],
+            low=graph_df['저가'],
+            close=graph_df['종가'],
+            increasing_line_color='red',  # 상승봉
+            decreasing_line_color='blue'  # 하락봉
+        )
+        # 히스토그램 (거래량) 객체 생성
+        volume_h = plotly.graph_objs.Bar(x=graph_df['날짜'], y=graph_df['거래량'])
+        # figure 생성
+        figure = plotly.subplots.make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
+        # 첫번째 캔들 차트
+        figure.add_trace(candle, row=1, col=1)
+        # 두번째 거래량 차트
+        figure.add_trace(volume_h, row=2, col=1)
+        # FIXME 차트 레이아웃 수정
+        figure.update_layout(
+            title='<b>' + stock_name + ' (' + code + ') 차트</b>',
+            title_x=0.5,
+            title_xanchor='center',
+            title_font_size=25,
+            showlegend=False,
+            yaxis1=dict(
+                title='<b>주가</b>',
+                tickformat=','
+            ),
+            xaxis2=dict(
+                title='<b>날짜</b>',
+                rangeslider_visible=True
+            ),
+            yaxis2=dict(
+                title='<b>거래량</b>',
+                tickformat=',',
+            ),
+            xaxis1_rangeslider_visible=False
+        )
+        figure.show()
+    except Exception:
+        msg_type = '[print stock chart failed] '
+        msg = '차트 출력에 실패하였습니다.'
+        raise StockCrawlingException(msg_type, msg)
 
 
 def print_csv(df, code, stock_name, str_start_date):
-
     try:
         # 필요없는 열 삭제 (axis 값이 0이면 행, 1이면 열)
         df.drop(['전일비', '시가', '고가', '저가'], axis=1, inplace=True)
@@ -209,8 +213,10 @@ def execute():
         df = crawling_stock_data(df, code, header, converted_start_date, last_page)
         logger.info('[end] 크롤링이 완료되었습니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')
 
-        # 그래프 출력
-        print_graph(df, code, stock_name)
+        # 차트 출력
+        # logger.info('[start] 차트 출력을 시작합니다.')
+        # print_graph(df, code, stock_name)
+        # logger.info('[end] 차트 출력을 완료되었습니다.')
 
         # CSV 파일 출력
         logger.info('[start] csv 파일 출력을 시작합니다.')
