@@ -61,7 +61,7 @@ def crawling_stock_data(df, code, header, start_date, last_page):
 
 def print_graph(df, code, stock_name):
     # 날짜 오름차순 정렬
-    graph_df = df.sort_values(by='날짜')
+    graph_df = df.sort_values(by='날짜').astype({'날짜':'datetime64[D]'})
     # 캔들 차트 객체 생성
     candle = plotly.graph_objs.Candlestick(
         x=graph_df['날짜'],
@@ -92,11 +92,12 @@ def print_graph(df, code, stock_name):
         ),
         xaxis2=dict(
             title='날짜',
-            rangeslider_visible=True
+            rangeslider_visible=True,
+            tickformat='%Y-%m-%d'
         ),
         yaxis2=dict(
             title='거래량',
-            tickformat=','
+            tickformat=',',
         ),
         xaxis1_rangeslider_visible=False
     )
@@ -208,8 +209,8 @@ def execute():
         df = crawling_stock_data(df, code, header, converted_start_date, last_page)
         logger.info('[end] 크롤링이 완료되었습니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')
 
-        # FIXME 그래프 출력
-        # print_graph(df, code, stock_name)
+        # 그래프 출력
+        print_graph(df, code, stock_name)
 
         # CSV 파일 출력
         logger.info('[start] csv 파일 출력을 시작합니다.')
