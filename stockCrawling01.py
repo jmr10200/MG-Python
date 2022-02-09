@@ -26,7 +26,7 @@ def page_data(code, header, page):
         df = pd.read_html(str(soap_data.find("table")), header=0)[0]
         df = df.dropna()
         return df
-    except Exception as e:
+    except Exception:
         msg_type = '[crawling page data failed] '
         msg = '페이지 데이터 취득에 실패하였습니다.'
         raise StockCrawlingException(msg_type, msg)
@@ -53,7 +53,7 @@ def crawling_stock_data(df, code, header, start_date, last_page):
         # float -> int 변환
         df = df.astype({'종가': 'int', '거래량': 'int'})
         return df
-    except Exception as se:
+    except Exception:
         msg_type = '[crawling stock data failed] '
         msg = '데이터 추출에 실패하였습니다.'
         raise StockCrawlingException(msg_type, msg)
@@ -77,12 +77,17 @@ def print_csv(df, code, stock_name, str_start_date):
 
 
 def stock_name_by_code(code, header):
-    # FIXME 키움 API 등 증권사 API 가 존재하지만, BeautifulSoup 연습을 위해
-    url = 'https://finance.naver.com/item/sise.naver?code={code}'.format(code=code)
-    res = requests.get(url, headers=header)
-    soup = BeautifulSoup(res.text, 'lxml')
-    stock_name = soup.select_one('div.wrap_company>h2>a').text
-    return stock_name
+    try:
+        # FIXME 키움 API 등 증권사 API 가 존재하지만, BeautifulSoup 연습을 위해
+        url = 'https://finance.naver.com/item/sise.naver?code={code}'.format(code=code)
+        res = requests.get(url, headers=header)
+        soup = BeautifulSoup(res.text, 'lxml')
+        stock_name = soup.select_one('div.wrap_company>h2>a').text
+        return stock_name
+    except Exception:
+        msg_type = '[stock name failed]'
+        msg = '주식 종목명 취득에 문제가 발생했습니다.'
+        raise StockCrawlingException(msg_type, msg)
 
 
 def validation_check(code, str_start_date, start_date):
@@ -137,7 +142,7 @@ def execute():
         soup = BeautifulSoup(html, 'lxml')
 
         # 종목코드 데이터 존재 체크
-        if not soup.select_one('table>tr>td>span.tah.p10.gray03').text:
+        if not soup.select_one('table>tr>td>span.tah.p10.gray03').text:  # 테이블의 첫번째 데이터
             msg_type = '[invalid stock code] '
             msg = '입력한 종목코드에 해당하는 데이터가 없습니다.'
             raise StockCrawlingException(msg_type, msg)
@@ -146,7 +151,7 @@ def execute():
             stock_name = stock_name_by_code(code, header)
 
         # 전체 페이지 수 계산
-        if not isinstance(soup.select_one('td.pgRR'), type(None)):  # get()이므로 널 체크 필요 : None 이 java 의 null 과 비슷한건가?
+        if not isinstance(soup.select_one('td.pgRR'), type(None)):
             last_page = int(soup.select_one('td.pgRR').a['href'].split('=')[-1])
         else:
             # 'pgRR'(맨뒤)가 없으면 1페이지만 존재
