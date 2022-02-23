@@ -1,21 +1,21 @@
-# base Image 지정 : ubuntu
-FROM ubuntu:18.04
-RUN apt-get -y update
-# by jmr
-MAINTAINER jmr
+FROM python:3
+USER root
 
-# python
-RUN apt-get -y install python3.7 python3-pip
-#RUN pip3 install --upgrade pip
+COPY . /tmp
 
-# 컨테이너 실행 전 수행할 쉘 명령어
-RUN mkdir -p /opt/mgpython
-WORKDIR /opt/mgpythom
-COPY . .
-RUN pip3 install -r requirements.txt
+RUN apt-get update
+RUN apt-get -y install locales && \
+    localedef -f UTF-8 -i ja_JP ja_JP.UTF-8
+ENV LANG ja_JP.UTF-8
+ENV LANGUAGE ja_JP:ja
+ENV LC_ALL ja_JP.UTF-8
+ENV TZ JST-9
+ENV TERM xterm
 
-# 컨테이너가 시작되었을 때 실행할 쉘 명렁어
-# 도커파일 내 1회만 실행할 수 있음
-EXPOSE 8082
-# FIXME 실행
-CMD ["python3", "stockCrawling01.py"]
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+RUN apt-get install -y vim less
+RUN pip install --upgrade pip
+RUN pip install --upgrade setuptools
+
+RUN python -m pip install jupyterlab

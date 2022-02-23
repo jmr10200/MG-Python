@@ -18,7 +18,7 @@ stockCrawling01.py 373220 2021-12-01
 ```
 
 ### 출력결과 확인
-* ~~브라우저로 일봉과 거래량 차트가 출력됩니다.~~ (버그 수정중)
+* 브라우저로 일봉과 거래량 차트가 출력됩니다.
 * csv파일은 이하의 형식으로 출력됩니다.
   * ../tmp/mg-csv/종목명(종목코드)_yyyy-mm-dd~yyyy-mm-dd.csv
 * 출력예1 : 삼성전자, 2020년 1월 1일부터 현재시간(2022년 2월 8일)까지 일별 주가 데이터 취득
@@ -36,3 +36,43 @@ LG에너지솔루션(373220)_2021-12-01~2022-02-08.csv
 * 로그 출력
   * ../tmp/mg-log/stock_yyyy-mm-dd.log
 
+<br/>
+
+<hr>
+
+## DOCKER 이용
+
+### 환경설정
+명령 프롬프트 창에서 다음의 커맨드를 실행하여 docker-compose.yml으로 정의한 컨테이너를 실행합니다.
+
+```
+docker-compose up -d --build
+```
+### 실행
+명령 프롬프트 창에서 다음의 커맨드를 실행하여 docker container에 접속합니다.
+```
+docker exec -it mg-python /bin/bash
+```
+tmp 이하의 폴더에 실행파일이 생성되며, **python3**을 입력하여 실행합니다.
+<br/><br/>
+**입력 예**
+```
+python3 stockCrawling01.py 005930 2020-01-01
+```
+<br/>
+각각 출력된 csv 파일과 log를 확인할 수 있습니다.
+<br/>
+* csv 파일 : tmp/mg-csv
+<br/>
+* log 파일 : tmp/mg-log
+<br/>
+
+```
+cat 출력파일명.csv
+cat 출력파일명.log
+```
+<br/><br/>
+<hr>
+**남은 과제**
+<br/>
+도커로 실행한 경우 차트 출력의 확인 방법
