@@ -49,31 +49,47 @@ LG에너지솔루션(373220)_2021-12-01~2022-02-08.csv
 ```
 docker-compose up -d --build
 ```
+![ex_screenshot](./img/01.png)
+
+ビルドができたらコンテイナーの確認します。
+
+```
+docker ps
+```
+![ex_screenshot](./img/02.png)
+
 ### 実行
 コマンドプロンプトで以下のコマンドを実行してdocker containerに接続します。
 ```
 docker exec -it mg-python /bin/bash
 ```
-tmpのフォルダに実行ファイルが生成されて,**python3**を入力して実行します。
+tmpのフォルダに実行ファイルが生成されていることを確認します。
+
+![ex_screenshot](./img/03.png)
+
+**python3**を入力して実行します。
 <br/><br/>
 **入力例**
 ```
 python3 stockCrawling01.py 005930 2020-01-01
 ```
+![ex_screenshot](./img/04.png)
+
 <br/>
 それぞれ出力されたcsvファイルとlogファイルを確認できます。
 <br/>
+
 * csvファイル : tmp/mg-csv
-<br/>
 * logファイル : tmp/mg-log
-<br/>
 
 ```
 cat 出力されたファイル名.csv
 cat 出力されたファイル名.log
 ```
+![ex_screenshot](./img/05.png)
 <br/><br/>
 <hr>
+
 **残りの課題**
-<br/>
+
 Dockerで実行する場合、出力されるチャートの確認方法
