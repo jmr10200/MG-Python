@@ -77,10 +77,9 @@ python3 stockCrawling01.py 005930 2020-01-01
 <br/>
 각각 출력된 csv 파일과 log를 확인할 수 있습니다.
 <br/>
+
 * csv 파일 : tmp/mg-csv
-<br/>
 * log 파일 : tmp/mg-log
-<br/>
 
 ```
 cat 출력파일명.csv
