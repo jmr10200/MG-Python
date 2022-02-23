@@ -50,7 +50,7 @@ def crawling_stock_data(df, code, header, start_date, last_page):
             pg += 1
 
         # float -> int 변환
-        df = df.astype({'종가': 'int', '시가': 'int', '고가': 'int', '저가': 'int', '거래량': 'int'})
+        df = df.astype({'전일비': 'int', '종가': 'int', '시가': 'int', '고가': 'int', '저가': 'int', '거래량': 'int'})
         return df
     except Exception:
         msg_type = '[crawling stock data failed] '
@@ -61,9 +61,21 @@ def crawling_stock_data(df, code, header, start_date, last_page):
 
 def print_graph(df, code, stock_name):
     try:
+        # 헤더 취득
+        df_header = df.columns.tolist()
+        # 리스트 로 변환하여 거래정지 상태의 종목 데이터 가공
+        list_df = df.values.tolist()
+        for i in list_df:
+            # 전일비 0 and 거래량 0 인 경우
+            if i[2] == 0 and i[6] == 0:
+                close_price = i[1]
+                i[3:6] = [close_price, close_price, close_price]
+        # 취득 했던 헤더로 DataFrame 정의
+        graph_df = pd.DataFrame(list_df, columns=df_header)
         # 날짜 오름차순 정렬
-        graph_df = df.sort_values(by='날짜')
-        # FIXME 캔들 차트 객체 생성
+        graph_df = graph_df.sort_values(by='날짜')
+
+        # 캔들 차트 객체 생성
         candle = plotly.graph_objs.Candlestick(
             x=graph_df['날짜'],
             open=graph_df['시가'],
@@ -81,7 +93,7 @@ def print_graph(df, code, stock_name):
         figure.add_trace(candle, row=1, col=1)
         # 두번째 거래량 차트
         figure.add_trace(volume_h, row=2, col=1)
-        # FIXME 차트 레이아웃 수정
+        # 차트 레이아웃 수정
         figure.update_layout(
             title='<b>' + stock_name + ' (' + code + ') 차트</b>',
             title_x=0.5,
@@ -106,6 +118,7 @@ def print_graph(df, code, stock_name):
     except Exception:
         msg_type = '[print stock chart failed] '
         msg = '차트 출력에 실패하였습니다.'
+        traceback.print_exc()
         raise StockCrawlingException(msg_type, msg)
 
 
@@ -214,9 +227,9 @@ def execute():
         logger.info('[end] 크롤링이 완료되었습니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')
 
         # 차트 출력
-        # logger.info('[start] 차트 출력을 시작합니다.')
-        # print_graph(df, code, stock_name)
-        # logger.info('[end] 차트 출력을 완료되었습니다.')
+        logger.info('[start] 차트 출력을 시작합니다.')
+        print_graph(df, code, stock_name)
+        logger.info('[end] 차트 출력이 완료되었습니다.')
 
         # CSV 파일 출력
         logger.info('[start] csv 파일 출력을 시작합니다.')
