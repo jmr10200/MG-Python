@@ -48,17 +48,32 @@ LG에너지솔루션(373220)_2021-12-01~2022-02-08.csv
 ```
 docker-compose up -d --build
 ```
+![ex_screenshot](./img/01.png)
+
+빌드가 완료되면 컨테이너를 확인합니다.
+
+```
+docker ps
+```
+![ex_screenshot](./img/02.png)
+
 ### 실행
 명령 프롬프트 창에서 다음의 커맨드를 실행하여 docker container에 접속합니다.
 ```
 docker exec -it mg-python /bin/bash
 ```
-tmp 이하의 폴더에 실행파일이 생성되며, **python3**을 입력하여 실행합니다.
+tmp 이하의 폴더에 실행파일이 생성된 것을 확인합니다.
+
+![ex_screenshot](./img/03.png)
+
+**python3**을 입력하여 실행합니다.
 <br/><br/>
 **입력 예**
 ```
 python3 stockCrawling01.py 005930 2020-01-01
 ```
+![ex_screenshot](./img/04.png)
+
 <br/>
 각각 출력된 csv 파일과 log를 확인할 수 있습니다.
 <br/>
@@ -71,8 +86,10 @@ python3 stockCrawling01.py 005930 2020-01-01
 cat 출력파일명.csv
 cat 출력파일명.log
 ```
+![ex_screenshot](./img/05.png)
 <br/><br/>
 <hr>
+
 **남은 과제**
-<br/>
+
 도커로 실행한 경우 차트 출력의 확인 방법
