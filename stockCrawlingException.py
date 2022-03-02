@@ -1,5 +1,5 @@
 """
-크롤링 실행 과정에서 발생하는 에러를 관리하는 클래스
+クローリングの実行中に発生するエラーを管理するクラス
 """
 
 
@@ -9,4 +9,4 @@ class StockCrawlingException(Exception):
         self.msg = msg
 
     def __str__(self):
-        return self.msg_type + self.msg  # 에러 메시지 가공
+        return self.msg_type + self.msg  # エラーメッセージの加工
