@@ -5,7 +5,7 @@ services:
     build: .
     image: python:3.7
     container_name: 'mg-python'
-    working_dir: '/root/'
+    working_dir: '/opt/app/'
     tty: true
     volumes:
-      - ./tmp:/root/tmp
+      - ./tmp:/opt/app/tmp
