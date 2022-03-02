@@ -4,7 +4,6 @@
 
 parameter : 회사코드, 취득개시일
 """
-
 import traceback
 import requests
 from bs4 import BeautifulSoup
@@ -19,6 +18,7 @@ import os
 import plotly
 
 
+# ページごとにデータを取得
 def page_data(code, header, page):
     try:
         url = 'http://finance.naver.com/item/sise_day.naver?code={code}&page={page}'.format(code=code, page=page)
@@ -29,16 +29,17 @@ def page_data(code, header, page):
         return df
     except Exception:
         msg_type = '[crawling page data failed] '
-        msg = '페이지 데이터 취득에 실패하였습니다.'
+        msg = '페이지 데이터 취득에 실패하였습니다.'  # ページデータの取得を失敗しました。
         raise StockCrawlingException(msg_type, msg)
     return None
 
 
+# クローリング
 def crawling_stock_data(df, code, header, start_date, last_page):
     try:
         pg = 1
         while pg <= last_page:
-            logger.info(str(pg) + '페이지 데이터를 추출합니다.')
+            logger.info(str(pg) + '페이지 데이터를 추출합니다.')  # ○ページのデータを取得します。
             page_df = page_data(code, header, pg)
             page_df_filtered = page_df[page_df['날짜'] > start_date]
             if df is None:
@@ -54,48 +55,51 @@ def crawling_stock_data(df, code, header, start_date, last_page):
         return df
     except Exception:
         msg_type = '[crawling stock data failed] '
-        msg = '데이터 추출에 실패하였습니다.'
+        msg = '데이터 추출에 실패하였습니다.'  # データ取得を失敗しました。
         raise StockCrawlingException(msg_type, msg)
     # return None
 
 
-def print_graph(df, code, stock_name):
+# チャート出力
+def print_graph(df, code, stock_name, str_start_date):
     try:
-        # 헤더 취득
+        # MEMO　課題のデータのコード：010140
+        # headerの取得
         df_header = df.columns.tolist()
-        # 리스트 로 변환하여 거래정지 상태의 종목 데이터 가공
+        # DataFrameをlistに変換、取引中止の状態のデータを編集加工
         list_df = df.values.tolist()
         for i in list_df:
-            # 전일비 0 and 거래량 0 인 경우
+            # 前日比 == 0 and 出来高 == 0 の場合、
             if i[2] == 0 and i[6] == 0:
                 close_price = i[1]
+                # 始値、高値、安値を終値に設定
                 i[3:6] = [close_price, close_price, close_price]
-        # 취득 했던 헤더로 DataFrame 정의
+        # 取得してたheaderでDataFrameを生成
         graph_df = pd.DataFrame(list_df, columns=df_header)
-        # 날짜 오름차순 정렬
+        # 日付でソート
         graph_df = graph_df.sort_values(by='날짜')
 
-        # 캔들 차트 객체 생성
+        # candleチャート生成
         candle = plotly.graph_objs.Candlestick(
             x=graph_df['날짜'],
             open=graph_df['시가'],
             high=graph_df['고가'],
             low=graph_df['저가'],
             close=graph_df['종가'],
-            increasing_line_color='red',  # 상승봉
-            decreasing_line_color='blue'  # 하락봉
+            increasing_line_color='red',
+            decreasing_line_color='blue'
         )
-        # 히스토그램 (거래량) 객체 생성
+        # 出来高チャートの生成
         volume_h = plotly.graph_objs.Bar(x=graph_df['날짜'], y=graph_df['거래량'])
-        # figure 생성
+        # figure生成
         figure = plotly.subplots.make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
-        # 첫번째 캔들 차트
+        # キャンドルチャート
         figure.add_trace(candle, row=1, col=1)
-        # 두번째 거래량 차트
+        # 出来高チャート
         figure.add_trace(volume_h, row=2, col=1)
-        # 차트 레이아웃 수정
+        # チャートのレイアウト編集
         figure.update_layout(
-            title='<b>' + stock_name + ' (' + code + ') 차트</b>',
+            title='<b>' + stock_name + ' (' + code + ') Chart</b>',
             title_x=0.5,
             title_xanchor='center',
             title_font_size=25,
@@ -112,37 +116,48 @@ def print_graph(df, code, stock_name):
                 title='<b>거래량</b>',
                 tickformat=',',
             ),
-            xaxis1_rangeslider_visible=False
+            xaxis1_rangeslider_visible=False,
+            xaxis2_rangeslider_visible=False
         )
-        figure.show()
+        # figure.show()
+        directory = '../tmp/chart/'
+        os.makedirs(directory, exist_ok=True)
+        filename = code + "_chart_" + str_start_date + '~' + datetime.now().strftime('%Y-%m-%d')
+        # htmlファイル出力
+        plotly.io.write_html(figure, file=directory + "{filename}.html".format(filename=filename))
+        # pngファイル出力
+        plotly.io.write_image(figure, file=directory + "{filename}.png".format(filename=filename))
+        logger.info('{filename}.png'.format(filename=filename))
     except Exception:
         msg_type = '[print stock chart failed] '
-        msg = '차트 출력에 실패하였습니다.'
+        msg = '차트 출력에 실패하였습니다.'  # チャート出力を失敗しました。
         traceback.print_exc()
         raise StockCrawlingException(msg_type, msg)
 
 
+# csvファイル出力
 def print_csv(df, code, stock_name, str_start_date):
     try:
-        # 필요없는 열 삭제 (axis 값이 0이면 행, 1이면 열)
+        # 不要な列削除 (axisが0の場合は行, 1の場合は列)
         df.drop(['전일비', '시가', '고가', '저가'], axis=1, inplace=True)
 
-        # 파일명: 종목명(종목코드)_yyyy-mm-dd~yyyy-mm-dd.csv
+        # ファイル名: 株式名_コード_yyyy-mm-dd~yyyy-mm-dd.csv
         directory = '../tmp/mg-csv'
         os.makedirs(directory, exist_ok=True)
-        filename = stock_name + '(' + code + ')_' + str_start_date + '~' + datetime.now().strftime('%Y-%m-%d')
-        # CSV 파일 출력.
+        filename = stock_name + '_' + code + '_' + str_start_date + '~' + datetime.now().strftime('%Y-%m-%d')
+        # CSVファイル出力
         df.to_csv(directory + '/{filename}.csv'.format(filename=filename), index=False)
         logger.info('{filename}.csv'.format(filename=filename))
     except Exception:
         msg_type = '[csv file print failed] '
-        msg = 'csv 파일 출력에 실패하였습니다.'
+        msg = 'csv 파일 출력에 실패하였습니다.'  # csvファイル出力を失敗しました。
         raise StockCrawlingException(msg_type, msg)
 
 
+# 株式名取得
 def stock_name_by_code(code, header):
     try:
-        # FIXME 키움 API 등 증권사 API 가 존재하지만, BeautifulSoup 연습을 위해
+        # FIXME BeautifulSoup練習
         url = 'https://finance.naver.com/item/sise.naver?code={code}'.format(code=code)
         res = requests.get(url, headers=header)
         soup = BeautifulSoup(res.text, 'lxml')
@@ -150,7 +165,7 @@ def stock_name_by_code(code, header):
         return stock_name
     except Exception:
         msg_type = '[stock name failed]'
-        msg = '주식 종목명 취득에 문제가 발생했습니다.'
+        msg = '주식 종목명 취득에 문제가 발생했습니다.'  # 株式名の取得に問題が発生しました。
         raise StockCrawlingException(msg_type, msg)
 
 
@@ -163,18 +178,18 @@ def validation_check(code, str_start_date):
     msg_type = '[validation check error] '
 
     if not code_reg.match(code):
-        msg = '종목코드를 확인해 주세요. 입력예: 005930'
+        msg = '종목코드를 확인해 주세요. 입력예: 005930'  # 銘柄コードを確認してください。入力例: 005930
         raise StockCrawlingException(msg_type, msg)  # java : throw
 
     if not start_date_reg.match(str_start_date):
-        msg = '취득개시일을 확인해 주세요. 입력예: 2020-01-01'
+        msg = '취득개시일을 확인해 주세요. 입력예: 2020-01-01'  # 取得開始日を確認してください。入力例 2020-01-01
         raise StockCrawlingException(msg_type, msg)
 
     # 취득개시일 현재날짜보다 미래면 크롤링 불가능
     start_date = datetime.strptime(str_start_date, '%Y-%m-%d')
     today_date = datetime.today().date()
     if start_date.date() > today_date:
-        msg = '취득개시일을 확인해 주세요. 취득개시일이 현재 날짜보다 미래입니다.'
+        msg = '취득개시일을 확인해 주세요. 취득개시일이 현재 날짜보다 미래입니다.'  # 取得開始日を確認してください。取得開始日が現在の日付より未来です。
         raise StockCrawlingException(msg_type, msg)
 
     logger.info('[end] validation check finished')
@@ -185,17 +200,17 @@ def execute():
     # 실행
     logger.info('[start] stock crawling execute')
     try:
-        # 종목코드, 취득개시일 입력받기
+        # 銘柄コード、取得開始日
         code = sys.argv[1]
         str_start_date = sys.argv[2]
 
         # validation check
         start_date = validation_check(code, str_start_date)
 
-        # 입력받은 날짜 포맷 변환 yyyy-mm-dd -> yyyy.mm.dd
+        # 入力された日付のフォーマット変換 yyyy-mm-dd -> yyyy.mm.dd
         converted_start_date = start_date.strftime('%Y.%m.%d')
 
-        # 일별 시세 페이지는 헤더 정보 요구
+        # Header情報が要求される
         header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                                 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.82 Safari/537.36'}
         url = 'https://finance.naver.com/item/sise_day.naver?code={code}'.format(code=code)
@@ -205,47 +220,47 @@ def execute():
         html = res.text
         soup = BeautifulSoup(html, 'lxml')
 
-        # 종목코드 데이터 존재 체크
-        if not soup.select_one('table>tr>td>span.tah.p10.gray03').text:  # 테이블의 첫번째 데이터
+        # データの存在チェック
+        if not soup.select_one('table>tr>td>span.tah.p10.gray03').text:  # テーブルの最初データ
             msg_type = '[invalid stock code] '
-            msg = '입력한 종목코드에 해당하는 데이터가 없습니다.'
+            msg = '입력한 종목코드에 해당하는 데이터가 없습니다.'  # 入力したコードに該当するデータが存在しないです。
             raise StockCrawlingException(msg_type, msg)
         else:
-            # 존재시 종목명 취득, 키움 API 가 있지만, 크롤링 연습차..
+            # 存在する場合、株式名を取得
             stock_name = stock_name_by_code(code, header)
 
-        # 전체 페이지 수 계산
+        # 全体ページ数を取得
         if not isinstance(soup.select_one('td.pgRR'), type(None)):
             last_page = int(soup.select_one('td.pgRR').a['href'].split('=')[-1])
         else:
-            # 'pgRR'(맨뒤)가 없으면 1페이지만 존재
+            # 'pgRR'(最後ページ)がない場合、1ページのみ存在する
             last_page = 1
 
-        logger.info('[start] 크롤링을 시작합니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')
+        logger.info('[start] 크롤링을 시작합니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')  # クローリングを開始します。
         df = None
         df = crawling_stock_data(df, code, header, converted_start_date, last_page)
-        logger.info('[end] 크롤링이 완료되었습니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')
+        logger.info('[end] 크롤링이 완료되었습니다. (종목명: ' + stock_name + ', 종목코드: ' + code + ')')  # クローリングを完了しました。
 
-        # 차트 출력
-        logger.info('[start] 차트 출력을 시작합니다.')
-        print_graph(df, code, stock_name)
-        logger.info('[end] 차트 출력이 완료되었습니다.')
+        # チャート出力
+        logger.info('[start] 차트 출력을 시작합니다.')  # チャート出力を開始します。
+        print_graph(df, code, stock_name, str_start_date)
+        logger.info('[end] 차트 출력이 완료되었습니다.')  # チャート出力を完了しました
 
-        # CSV 파일 출력
-        logger.info('[start] csv 파일 출력을 시작합니다.')
+        # CSVファイル出力
+        logger.info('[start] csv 파일 출력을 시작합니다.')  # csvファイル出力を開始します。
         print_csv(df, code, stock_name, str_start_date)
-        logger.info('[end] csv 파일 출력이 완료되었습니다.')
+        logger.info('[end] csv 파일 출력이 완료되었습니다.')  # csvファイル出力を完了しました。
 
         logger.info('[end] stock crawling finished')
     except StockCrawlingException as se:
         logger.error(se)
     except Exception as e:
-        # 예상하지 못한 에러는 trace 출력
+        # 予想外のエラーはtrace出力
         traceback.print_exc()
         logger.error(e)
 
 
 if __name__ == '__main__':
-    # 로그
+    # ログ
     logger = loggerConfig.logger
     execute()
