@@ -16,6 +16,74 @@ import sys
 import re
 import os
 import plotly
+from elasticsearch import Elasticsearch, helpers
+
+
+# elastic search(7.17.1)
+def save_data(df, code, stock_name, str_start_date):
+    es = Elasticsearch("http://localhost:9200")
+    indexName = 'stockdata'
+    mapping = {
+        "mappings": {
+            "properties": {
+                "date": {"type": "date",  # date
+                         "store": True,
+                         "index": True},
+                "price": {"type": "integer",
+                          "store": True,
+                          "index": True},
+                "volume": {"type": "text",
+                           "store": True,
+                           "index": True}
+            }
+        }
+    }
+    # indexを存在チェックして作成
+    if es.indices.exists(index=indexName):
+        pass
+    else:
+        es.indices.create(index=indexName, body=mapping)
+
+    # column名を英語に変換
+    df = df.rename(columns={
+        '날짜': 'date',
+        '종가': 'price',
+        '거래량': 'volume'
+    })
+    helpers.bulk(es, es_doc_generator("stock-data", df))
+    return es
+
+
+# data生成
+def es_doc_generator(index, df):
+    records = [d[1] for d in df.iterrows()]
+    docs_es = [{key: doc[key] for key in doc.keys()} for doc in records]
+    for doc in docs_es:
+        hashid = hash(frozenset(doc.items()))
+        yield {
+            "_index": index,
+            "_id": hashid,
+            "_type": "_doc",
+            "_source": doc,
+        }
+
+
+# data検索
+def search_data(es):
+    query = {
+        "query": {
+            "range": {
+                "date": {
+                    "gte": "2021-12-01"  # 2021-12-01以後のデータ検索
+                }
+            }
+        }
+    }
+    # ドキュメントを検索
+    result = es.search(index="stock-data", body=query, size=15)
+    # 検索結果からドキュメントの内容のみ表示
+    for document in result["hits"]["hits"]:
+        print(document["_source"])
 
 
 # ページごとにデータを取得
@@ -243,7 +311,7 @@ def execute():
 
         # チャート出力
         logger.info('[start] 차트 출력을 시작합니다.')  # チャート出力を開始します。
-        print_graph(df, code, stock_name, str_start_date)
+        # print_graph(df, code, stock_name, str_start_date)
         logger.info('[end] 차트 출력이 완료되었습니다.')  # チャート出力を完了しました
 
         # CSVファイル出力
@@ -251,6 +319,12 @@ def execute():
         print_csv(df, code, stock_name, str_start_date)
         logger.info('[end] csv 파일 출력이 완료되었습니다.')  # csvファイル出力を完了しました。
 
+        # FIXME docker環境ではまだ確認出来てないのでコメントアウト
+        # logger.info('[start] insert data into Elasticsearch')  # ElasticSearchに保存を開始します。
+        # es = save_data(df, code, stock_name, str_start_date)
+        # logger.info('[end] successfully inserted into Elasticsearch')  # ElasticSearchに保存されました。
+        # TODO dataを検索するメソッド
+        # search_data(es)
         logger.info('[end] stock crawling finished')
     except StockCrawlingException as se:
         logger.error(se)
