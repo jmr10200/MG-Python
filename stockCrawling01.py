@@ -19,53 +19,63 @@ import plotly
 from elasticsearch import Elasticsearch, helpers
 
 
-# elastic search(7.17.1)
+# elasticsearch(7.17.1)
 def save_data(df, code, stock_name, str_start_date):
-    es = Elasticsearch("http://localhost:9200")
-    indexName = 'stockdata'
-    mapping = {
-        "mappings": {
-            "properties": {
-                "date": {"type": "date",  # date
-                         "store": True,
-                         "index": True},
-                "price": {"type": "integer",
-                          "store": True,
-                          "index": True},
-                "volume": {"type": "text",
-                           "store": True,
-                           "index": True}
+    try:
+        es = Elasticsearch("http://localhost:9200")
+        indexName = 'stockdata'
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "date": {"type": "date",  # date
+                             "store": True,
+                             "index": True},
+                    "price": {"type": "integer",
+                              "store": True,
+                              "index": True},
+                    "volume": {"type": "text",
+                               "store": True,
+                               "index": True}
+                }
             }
         }
-    }
-    # indexを存在チェックして作成
-    if es.indices.exists(index=indexName):
-        pass
-    else:
-        es.indices.create(index=indexName, body=mapping)
+        # indexを存在チェックして作成
+        if es.indices.exists(index=indexName):
+            pass
+        else:
+            es.indices.create(index=indexName, body=mapping)
 
-    # column名を英語に変換
-    df = df.rename(columns={
-        '날짜': 'date',
-        '종가': 'price',
-        '거래량': 'volume'
-    })
-    helpers.bulk(es, es_doc_generator("stock-data", df))
-    return es
+        # column名を英語に変換
+        df = df.rename(columns={
+            '날짜': 'date',
+            '종가': 'price',
+            '거래량': 'volume'
+        })
+        helpers.bulk(es, es_doc_generator("stock-data", df))
+        return es
+    except Exception:
+        msg_type = '[save data failed] '
+        msg = 'failed insert data into Elasticsearch'  # Enlasticsearchにインサートを失敗しました。
+        raise StockCrawlingException(msg_type, msg)
 
 
 # data生成
 def es_doc_generator(index, df):
-    records = [d[1] for d in df.iterrows()]
-    docs_es = [{key: doc[key] for key in doc.keys()} for doc in records]
-    for doc in docs_es:
-        hashid = hash(frozenset(doc.items()))
-        yield {
-            "_index": index,
-            "_id": hashid,
-            "_type": "_doc",
-            "_source": doc,
-        }
+    try:
+        records = [d[1] for d in df.iterrows()]
+        docs_es = [{key: doc[key] for key in doc.keys()} for doc in records]
+        for doc in docs_es:
+            hashid = hash(frozenset(doc.items()))
+            yield {
+                "_index": index,
+                "_id": hashid,
+                "_type": "_doc",
+                "_source": doc,
+            }
+    except Exception:
+        msg_type = '[es data generator failed] '
+        msg = 'failed data generation'  # Enlasticsearchにインサートを失敗しました。
+        raise StockCrawlingException(msg_type, msg)
 
 
 # data検索
