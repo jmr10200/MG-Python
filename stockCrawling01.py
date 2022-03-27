@@ -274,14 +274,12 @@ def validation_check(code, str_start_date):
 
 
 def execute():
-    # 실행
+    # 実行
     logger.info('[start] stock crawling execute')
     try:
-        code = input("code? ")
-        str_start_date = input("start date? ")
         # 銘柄コード、取得開始日
-        # code = sys.argv[1]
-        # str_start_date = sys.argv[2]
+        code = sys.argv[1]
+        str_start_date = sys.argv[2]
 
         # validation check
         start_date = validation_check(code, str_start_date)
@@ -322,7 +320,7 @@ def execute():
 
         # チャート出力
         logger.info('[start] 차트 출력을 시작합니다.')  # チャート出力を開始します。
-        # print_graph(df, code, stock_name, str_start_date)
+        print_graph(df, code, stock_name, str_start_date)
         logger.info('[end] 차트 출력이 완료되었습니다.')  # チャート出力を完了しました
 
         # CSVファイル出力
@@ -331,11 +329,11 @@ def execute():
         logger.info('[end] csv 파일 출력이 완료되었습니다.')  # csvファイル出力を完了しました。
 
         # FIXME docker環境ではまだ確認出来てないのでコメントアウト
-        logger.info('[start] insert data into Elasticsearch')  # ElasticSearchに保存を開始します。
-        es = save_data(df, code, stock_name, str_start_date)
-        logger.info('[end] successfully inserted into Elasticsearch')  # ElasticSearchに保存されました。
+        # logger.info('[start] insert data into Elasticsearch')  # ElasticSearchに保存を開始します。
+        # es = save_data(df, code, stock_name, str_start_date)
+        # logger.info('[end] successfully inserted into Elasticsearch')  # ElasticSearchに保存されました。
         # TODO dataを検索するメソッド
-        search_data(es, code)
+        # search_data(es, code)
         logger.info('[end] stock crawling finished')
     except StockCrawlingException as se:
         logger.error(se)
