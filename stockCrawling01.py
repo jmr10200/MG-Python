@@ -23,7 +23,7 @@ from elasticsearch import Elasticsearch, helpers
 def save_data(df, code, stock_name, str_start_date):
     try:
         es = Elasticsearch("http://localhost:9200")
-        indexName = 'stockdata'
+        indexName = 'stockdata'  # index : RDBMSのdatabase
         mapping = {
             "mappings": {
                 "properties": {
@@ -33,7 +33,7 @@ def save_data(df, code, stock_name, str_start_date):
                     "price": {"type": "integer",
                               "store": True,
                               "index": True},
-                    "volume": {"type": "text",
+                    "volume": {"type": "integer",
                                "store": True,
                                "index": True}
                 }
@@ -51,35 +51,34 @@ def save_data(df, code, stock_name, str_start_date):
             '종가': 'price',
             '거래량': 'volume'
         })
-        helpers.bulk(es, es_doc_generator("stock-data", df))
+        helpers.bulk(es, es_doc_generator(code, df))
         return es
     except Exception:
         msg_type = '[save data failed] '
-        msg = 'failed insert data into Elasticsearch'  # Enlasticsearchにインサートを失敗しました。
+        msg = 'failed insert data into Elasticsearch'  # Elasticsearchにインサートを失敗しました。
         raise StockCrawlingException(msg_type, msg)
 
 
 # data生成
-def es_doc_generator(index, df):
+def es_doc_generator(code, df):
     try:
         records = [d[1] for d in df.iterrows()]
         docs_es = [{key: doc[key] for key in doc.keys()} for doc in records]
         for doc in docs_es:
-            hashid = hash(frozenset(doc.items()))
             yield {
-                "_index": index,
-                "_id": hashid,
+                "_index": code,  # code
+                "_id": doc['date'],  # PK
                 "_type": "_doc",
                 "_source": doc,
             }
     except Exception:
         msg_type = '[es data generator failed] '
-        msg = 'failed data generation'  # Enlasticsearchにインサートを失敗しました。
+        msg = 'failed data generation'  # Elasticsearchにインサートを失敗しました。
         raise StockCrawlingException(msg_type, msg)
 
 
 # data検索
-def search_data(es):
+def search_data(es, code):
     query = {
         "query": {
             "range": {
@@ -90,7 +89,7 @@ def search_data(es):
         }
     }
     # ドキュメントを検索
-    result = es.search(index="stock-data", body=query, size=15)
+    result = es.search(index=code, body=query, size=30)
     # 検索結果からドキュメントの内容のみ表示
     for document in result["hits"]["hits"]:
         print(document["_source"])
@@ -278,9 +277,11 @@ def execute():
     # 실행
     logger.info('[start] stock crawling execute')
     try:
+        code = input("code? ")
+        str_start_date = input("start date? ")
         # 銘柄コード、取得開始日
-        code = sys.argv[1]
-        str_start_date = sys.argv[2]
+        # code = sys.argv[1]
+        # str_start_date = sys.argv[2]
 
         # validation check
         start_date = validation_check(code, str_start_date)
@@ -330,11 +331,11 @@ def execute():
         logger.info('[end] csv 파일 출력이 완료되었습니다.')  # csvファイル出力を完了しました。
 
         # FIXME docker環境ではまだ確認出来てないのでコメントアウト
-        # logger.info('[start] insert data into Elasticsearch')  # ElasticSearchに保存を開始します。
-        # es = save_data(df, code, stock_name, str_start_date)
-        # logger.info('[end] successfully inserted into Elasticsearch')  # ElasticSearchに保存されました。
+        logger.info('[start] insert data into Elasticsearch')  # ElasticSearchに保存を開始します。
+        es = save_data(df, code, stock_name, str_start_date)
+        logger.info('[end] successfully inserted into Elasticsearch')  # ElasticSearchに保存されました。
         # TODO dataを検索するメソッド
-        # search_data(es)
+        search_data(es, code)
         logger.info('[end] stock crawling finished')
     except StockCrawlingException as se:
         logger.error(se)
